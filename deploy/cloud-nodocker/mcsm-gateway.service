@@ -1,0 +1,16 @@
+[Unit]
+Description=MCSManager Provisioning Gateway
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/mcsm-shop/gateway
+ExecStart=/usr/bin/node dist/src/server.js
+Restart=always
+RestartSec=5
+Environment=NODE_ENV=production
+# The gateway reads /opt/mcsm-shop/gateway/.env via dotenv.
+LimitNOFILE=65535
+
+[Install]
+WantedBy=multi-user.target

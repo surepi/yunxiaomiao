@@ -1,0 +1,21 @@
+# dependencies
+node_modules/
+
+# build output
+dist/
+.vite/
+
+# env / secrets (keep .env.example)
+.env
+.env.local
+.env.*.local
+
+# runtime data
+data/
+*.db
+*.sqlite
+*.sqlite3
+
+# logs / OS junk
+*.log
+.DS_Store

@@ -1,0 +1,5 @@
+# Physical node, bare-metal. Replace node1.example.com with this machine's domain.
+# Caddy terminates TLS and forwards HTTPS + WSS to the locally installed daemon.
+node1.example.com {
+	reverse_proxy 127.0.0.1:24444
+}

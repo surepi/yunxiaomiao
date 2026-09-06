@@ -1,0 +1,112 @@
+// Provisioning gateway data model.
+// Provider defaults to SQLite for zero-infra local runs.
+// For production MySQL/Postgres: change `provider` to "mysql" (or "postgresql"),
+// set DATABASE_URL accordingly, then run `prisma db push`. All fields below use
+// portable types (JSON is stored as String) so the schema is engine agnostic.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Package {
+  id             Int      @id @default(autoincrement())
+  slug           String   @unique
+  name           String
+  description    String   @default("")
+  priceFen       Int      @default(0)
+  hours          Int      @default(720)
+  mcsmCategoryId Int      @default(0)
+  // JSON string: IGlobalInstanceConfig template (docker image, ports, start command, ...)
+  setupInfo      String
+  // JSON string: docker resource limit overrides { memory, cpuUsage, maxSpace, network, ... }
+  resourceLimits String   @default("{}")
+  // "auto" = pick the least busy available node; otherwise a fixed daemonId
+  nodeStrategy   String   @default("auto")
+  fixedNodeId    String   @default("")
+  active         Boolean  @default(true)
+  sort           Int      @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  cards     RedeemCard[]
+  orders    Order[]
+  instances ProvisionedInstance[]
+}
+
+model RedeemCard {
+  id        Int       @id @default(autoincrement())
+  code      String    @unique
+  packageId Int
+  package   Package   @relation(fields: [packageId], references: [id])
+  batchNo   String    @default("")
+  status    String    @default("unused") // unused | used | disabled
+  orderId   Int?
+  order     Order?    @relation(fields: [orderId], references: [id])
+  usedBy    String    @default("")
+  usedAt    DateTime?
+  expiresAt DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([status])
+}
+
+model Order {
+  id        Int      @id @default(autoincrement())
+  orderNo   String   @unique
+  username  String   @default("")
+  packageId Int
+  package   Package  @relation(fields: [packageId], references: [id])
+  source    String   @default("card") // card | webhook
+  amountFen Int      @default(0)
+  status    String   @default("created") // created | provisioning | done | failed
+  message   String   @default("")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  cards     RedeemCard[]
+  instances ProvisionedInstance[]
+}
+
+model ProvisionedInstance {
+  id           Int       @id @default(autoincrement())
+  username     String
+  instanceUuid String    @unique
+  daemonId     String
+  categoryId   Int
+  packageId    Int?
+  package      Package?  @relation(fields: [packageId], references: [id])
+  orderId      Int?
+  order        Order?    @relation(fields: [orderId], references: [id])
+  status       String    @default("provisioning") // provisioning | active | expired | failed
+  expireAt     DateTime?
+  // JSON string: last known instance info (ports, status, players, ...)
+  raw          String    @default("{}")
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([username])
+  @@index([daemonId])
+}
+
+model AdminUser {
+  id           Int      @id @default(autoincrement())
+  username     String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+}
+
+model WebhookEvent {
+  id          Int      @id @default(autoincrement())
+  provider    String   @default("taobao")
+  eventId     String   @default("")
+  payload     String
+  signatureOk Boolean  @default(false)
+  processed   Boolean  @default(false)
+  note        String   @default("")
+  createdAt   DateTime @default(now())
+}

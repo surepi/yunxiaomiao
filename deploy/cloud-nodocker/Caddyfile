@@ -1,0 +1,23 @@
+# Caddy (bare-metal, no Docker). Auto HTTPS. Replace example.com with your domain.
+# DNS A records -> cloud public IP:
+#   portal.example.com   (buyer portal + gateway API)
+#   panel.example.com    (MCSManager control panel)
+
+portal.example.com {
+	# Gateway API paths -> local gateway process
+	@api path /auth /auth/* /admin /admin/* /packages /redeem /renew \
+	          /instances /instances/* /webhooks /webhooks/* /health
+	handle @api {
+		reverse_proxy 127.0.0.1:8080
+	}
+	# Everything else -> buyer portal static files (SPA history fallback)
+	handle {
+		root * /opt/mcsm-shop/portal/dist
+		try_files {path} /index.html
+		file_server
+	}
+}
+
+panel.example.com {
+	reverse_proxy 127.0.0.1:23333
+}

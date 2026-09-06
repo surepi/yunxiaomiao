@@ -1,0 +1,19 @@
+# Optional: production database. The gateway itself runs on the host (or any
+# container runtime); this compose file just provides MySQL 8.
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: mcsm-gateway-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpass
+      MYSQL_DATABASE: mcsm_gateway
+      MYSQL_USER: gateway
+      MYSQL_PASSWORD: gatewaypass
+    ports:
+      - "3306:3306"
+    volumes:
+      - gateway-mysql:/var/lib/mysql
+
+volumes:
+  gateway-mysql:
