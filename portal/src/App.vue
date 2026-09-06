@@ -21,6 +21,7 @@ function logout() {
           <router-link to="/">{{ t("nav_home") }}</router-link>
           <router-link to="/open">{{ t("nav_open") }}</router-link>
           <router-link to="/services">{{ t("nav_services") }}</router-link>
+          <router-link v-if="auth.isLoggedIn" to="/account">{{ t("nav_account") }}</router-link>
           <router-link to="/console" class="admin-link">{{ t("admin_brand") }}</router-link>
         </nav>
         <div class="nav-user">

@@ -40,6 +40,32 @@ function addresses(i: MyInstance): string[] {
   return i.ports.map((p) => `${i.nodeHost ? i.nodeHost + ":" : ""}${p.host}`);
 }
 
+function statusMeta(i: MyInstance): { label: string; cls: "run" | "stop" | "warn" | "exp" } {
+  if (isExpired(i)) return { label: t("expired"), cls: "exp" };
+  switch (i.status) {
+    case 3:
+      return { label: t("status_running"), cls: "run" };
+    case 2:
+      return { label: t("status_starting"), cls: "warn" };
+    case 1:
+      return { label: t("status_stopping"), cls: "warn" };
+    case -1:
+      return { label: t("status_busy"), cls: "warn" };
+    default:
+      return { label: t("status_stopped"), cls: "stop" };
+  }
+}
+function infoLines(i: MyInstance): Array<{ title: string; value: string }> {
+  return (i.lines || [])
+    .filter(
+      (l) =>
+        l &&
+        (typeof l.value === "string" || typeof l.value === "number") &&
+        String(l.value).trim() !== ""
+    )
+    .map((l) => ({ title: String(l.title || ""), value: String(l.value) }));
+}
+
 async function load() {
   loading.value = true;
   error.value = "";
@@ -154,11 +180,12 @@ onMounted(load);
         </thead>
         <tbody>
           <tr v-for="i in instances" :key="i.instance_id">
-            <td>{{ i.name || i.instance_id.slice(0, 8) }}</td>
             <td>
-              <span v-if="isExpired(i)" class="badge exp">{{ t("expired") }}</span>
-              <span v-else-if="i.status === 3" class="badge run">{{ t("status_running") }}</span>
-              <span v-else class="badge stop">{{ t("status_stopped") }}</span>
+              <div>{{ i.name || i.instance_id.slice(0, 8) }}</div>
+              <div v-if="i.nodeName" class="muted node-name">{{ i.nodeName }}</div>
+            </td>
+            <td>
+              <span class="badge" :class="statusMeta(i).cls">{{ statusMeta(i).label }}</span>
             </td>
             <td>
               <div class="countdown" :class="{ exp: isExpired(i), warn: isNear(i) }">{{ countdown(i) }}</div>
@@ -174,6 +201,13 @@ onMounted(load);
                 </button>
               </div>
               <span v-else class="muted">{{ t("no_addr") }}</span>
+              <div
+                v-for="(ln, idx) in infoLines(i)"
+                :key="'ln' + idx"
+                class="muted info-line"
+              >
+                <template v-if="ln.title">{{ ln.title }}：</template>{{ ln.value }}
+              </div>
             </td>
             <td>
               <div class="row-actions">

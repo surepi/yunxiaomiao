@@ -8,6 +8,8 @@ export interface MyInstance extends InstanceInfo {
   managed: boolean;
   // Public host players use to connect (derived from the node address).
   nodeHost: string;
+  // Human-readable node label (panel remarks), falls back to the host.
+  nodeName: string;
 }
 
 function hostOf(node: PanelNode | undefined): string {
@@ -30,6 +32,9 @@ export async function listForUser(username: string): Promise<MyInstance[]> {
 
   const recByUuid = new Map(records.map((r) => [r.instanceUuid, r]));
   const hostByDaemon = new Map(nodes.map((n) => [n.uuid, hostOf(n)]));
+  const nameByDaemon = new Map(
+    nodes.map((n) => [n.uuid, (n.remarks?.trim() || hostOf(n) || "").trim()])
+  );
 
   const merged: MyInstance[] = live.map((info) => {
     const rec = recByUuid.get(info.instance_id);
@@ -43,7 +48,8 @@ export async function listForUser(username: string): Promise<MyInstance[]> {
         ? new Date(info.expire).toISOString()
         : null,
       managed: Boolean(rec),
-      nodeHost: hostByDaemon.get(daemonId) ?? ""
+      nodeHost: hostByDaemon.get(daemonId) ?? "",
+      nodeName: nameByDaemon.get(daemonId) ?? ""
     };
   });
 
@@ -60,7 +66,8 @@ export async function listForUser(username: string): Promise<MyInstance[]> {
       daemonId: rec.daemonId,
       expireAt: rec.expireAt ? rec.expireAt.toISOString() : null,
       managed: true,
-      nodeHost: hostByDaemon.get(rec.daemonId) ?? ""
+      nodeHost: hostByDaemon.get(rec.daemonId) ?? "",
+      nodeName: nameByDaemon.get(rec.daemonId) ?? ""
     });
   }
 

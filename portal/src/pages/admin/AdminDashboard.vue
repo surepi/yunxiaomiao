@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { ref } from "vue";
+import { onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
 import { useAdminStore } from "../../stores/admin";
+import { apiGet } from "../../api/client";
 import { t } from "../../i18n";
 import OverviewTab from "../../components/admin/OverviewTab.vue";
 import NodesTab from "../../components/admin/NodesTab.vue";
@@ -22,6 +23,21 @@ const tabs = [
   { key: "instances", label: t("admin_tab_instances") }
 ] as const;
 
+const panelUrl = ref("");
+
+onMounted(async () => {
+  try {
+    const res = await apiGet<{ panelUrl: string }>("/admin/config", { admin: true });
+    panelUrl.value = res.panelUrl || "";
+  } catch {
+    panelUrl.value = "";
+  }
+});
+
+function openPanel() {
+  if (panelUrl.value) window.open(panelUrl.value, "_blank", "noopener");
+}
+
 function logout() {
   admin.logout();
   router.push("/console/login");
@@ -33,6 +49,7 @@ function logout() {
     <div style="display:flex;align-items:center;justify-content:space-between;gap:12px">
       <h2 style="margin:0">{{ t("admin_brand") }} · {{ admin.username }}</h2>
       <div style="display:flex;gap:10px">
+        <button v-if="panelUrl" class="btn sm" @click="openPanel">{{ t("admin_open_panel") }}</button>
         <router-link to="/" class="btn sm ghost">{{ t("admin_back") }}</router-link>
         <button class="btn sm" @click="logout">{{ t("admin_logout") }}</button>
       </div>

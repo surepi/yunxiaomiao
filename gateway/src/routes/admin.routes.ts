@@ -8,6 +8,7 @@ import { getOverview } from "../services/statsService";
 import { prisma } from "../db/prisma";
 import { panelClient } from "../panel/client";
 import { parse, parseId } from "./validate";
+import { config } from "../config";
 
 // A JSON-encoded object string, validated when a package is saved so that
 // configuration mistakes surface in the admin console instead of at redeem time.
@@ -115,6 +116,11 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
 
   app.get("/admin/overview", async () => {
     return { overview: await getOverview() };
+  });
+
+  // Bootstrap config for the admin console (e.g. the panel URL for a direct link).
+  app.get("/admin/config", async () => {
+    return { panelUrl: config.mcsmUiOrigin };
   });
 
   app.get("/admin/orders", async () => {

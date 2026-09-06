@@ -163,6 +163,27 @@ class PanelClient {
     await this.call("POST", "/api/auth/login", { username, password, code: "" });
   }
 
+  /** Find a panel user's UUID by username (admin apiKey). Returns "" if absent. */
+  async getUserUuid(username: string): Promise<string> {
+    const res = await this.call<unknown>(
+      "GET",
+      `/api/auth?userName=${encodeURIComponent(username)}`
+    );
+    type Row = { uuid?: string; userName?: string };
+    const list: Row[] = Array.isArray(res)
+      ? (res as Row[])
+      : Array.isArray((res as { data?: unknown[] })?.data)
+      ? ((res as { data: Row[] }).data)
+      : [];
+    const found = list.find((u) => u && u.userName === username);
+    return found?.uuid ?? "";
+  }
+
+  /** Reset a user's password as admin (requires the panel user uuid). */
+  async updateUserPassword(uuid: string, password: string): Promise<void> {
+    await this.call("PUT", `/api/auth?uuid=${encodeURIComponent(uuid)}`, { password });
+  }
+
   listNodes(): Promise<PanelNode[]> {
     return this.call("GET", "/api/service/remote_services_list");
   }

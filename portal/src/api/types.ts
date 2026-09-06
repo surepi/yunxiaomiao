@@ -25,6 +25,7 @@ export interface MyInstance {
   expireAt: string | null;
   managed: boolean;
   nodeHost: string;
+  nodeName: string;
 }
 
 export interface RedeemResult {

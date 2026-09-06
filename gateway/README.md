@@ -74,6 +74,8 @@ Schema 字段全部使用可移植类型（JSON 以字符串存），切换步�
 | `GET` | `/health` | 健康检查，返回 `{ ok, time }` |
 | `POST` | `/auth/register` | 注册 `{username,password}`（同时在面板建号） |
 | `POST` | `/auth/login` | 登录 `{username,password}`，返回买家 JWT |
+| `GET` | `/auth/me` | 当前登录买家信息 `{username}` |
+| `POST` | `/auth/password` | 自助修改密码 `{oldPassword,newPassword}`（校验旧密码后由管理员 apiKey 重置） |
 | `GET` | `/packages` | 在售套餐列表 |
 | `GET` | `/nodes` | 可选择的在线节点（一键开服选节点，按空闲度排序） |
 | `POST` | `/redeem` | 卡密一键开服 `{code, nodeId?}`（JWT 决定归属；`nodeId` 可选手选） |
@@ -87,6 +89,7 @@ Schema 字段全部使用可移植类型（JSON 以字符串存），切换步�
 | 方法 | 路径 | 说明 |
 | --- | --- | --- |
 | `POST` | `/admin/login` | `{username,password}`，返回管理员 JWT |
+| `GET` | `/admin/config` | 后台引导配置（面板地址 `panelUrl`，用于「直达面板」） |
 | `GET` / `POST` | `/admin/packages` | 套餐列表 / 新建 |
 | `PUT` / `DELETE` | `/admin/packages/:id` | 修改 / 删除套餐 |
 | `GET` | `/admin/templates` | 官方“快捷安装”模板列表（用于一键导入套餐） |
