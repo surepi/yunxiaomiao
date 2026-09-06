@@ -39,15 +39,15 @@ curl -s -o /dev/null -w "panel local -> %{http_code}\n" http://127.0.0.1:23333/a
 ```
 
 ## 3. 部署网关 + 门户
-把本仓库放到云服务器 `/opt/mcsm`（只需 `gateway/`、`portal/`、`deploy/cloud-nodocker/` 即可，整个仓库拷过去也行）：
+把本仓库放到云服务器 `/opt/mcsm-shop`（只需 `gateway/`、`portal/`、`deploy/cloud-nodocker/` 即可，整个仓库拷过去也行）：
 ```bash
-sudo mkdir -p /opt/mcsm && sudo chown -R "$USER:$USER" /opt/mcsm
-# 用 scp/rsync/git 把代码放到 /opt/mcsm，使目录为 /opt/mcsm-shop/gateway、/opt/mcsm/portal
+sudo mkdir -p /opt/mcsm-shop && sudo chown -R "$USER:$USER" /opt/mcsm-shop
+# 用 scp/rsync/git 把代码放到 /opt/mcsm-shop，使目录为 /opt/mcsm-shop/gateway、/opt/mcsm-shop/portal
 ```
 
 准备网关环境配置：
 ```bash
-cd /opt/mcsm
+cd /opt/mcsm-shop
 cp deploy/cloud-nodocker/gateway.env.example gateway/.env
 # 编辑 gateway/.env：
 #   CORS_ORIGIN=https://portal.example.com
@@ -124,4 +124,4 @@ sudo systemctl restart mcsm-gateway
 - 面板：`sudo systemctl restart mcsm-web`。
 - 备份：网关 SQLite 文件 `/opt/mcsm-shop/gateway/data/gateway.db`（用 MySQL 则 `mysqldump`）；
   面板数据在官方安装目录 `/opt/mcsmanager/web/data`。
-- 游戏存档在各物理机 `/opt/mcsm/daemon/data/InstanceData`（分别备份）。
+- 游戏存档在各物理机 `/opt/mcsmanager/daemon/data/InstanceData`（分别备份）。
