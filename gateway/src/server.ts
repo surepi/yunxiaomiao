@@ -4,6 +4,7 @@ import { prisma } from "./db/prisma";
 import { logger } from "./logger";
 import { ensureAdmin } from "./services/authService";
 import { startReconcile } from "./cron/reconcile";
+import { startAlertWatcher } from "./cron/alerts";
 
 async function main(): Promise<void> {
   assertRuntimeConfig();
@@ -19,6 +20,7 @@ async function main(): Promise<void> {
   logger.info(`Panel API target: ${config.panelBaseUrl}`);
 
   startReconcile(config.reconcileIntervalMinutes);
+  startAlertWatcher(config.alertIntervalMinutes);
 }
 
 main().catch((err) => {

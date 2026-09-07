@@ -1,4 +1,5 @@
 import { sendMail } from "./mailer";
+import { config } from "../config";
 
 const BRAND = "云小喵";
 
@@ -174,5 +175,24 @@ export async function mailInstanceArchived(v: InstanceMailVars): Promise<void> {
        ${v.expireAt ? `<li>到期时间：${v.expireAt}</li>` : ""}</ul>
        <p>服务器信息已归档。如需重新开服，可在门户使用新卡密一键开通。</p>`
     )
+  });
+}
+
+/**
+ * Ops alert to the shop operator (node offline, provisioning failure, panel
+ * unreachable). Goes to ALERT_EMAIL recipients; when mail is disabled the
+ * caller also logs, so nothing is lost.
+ */
+export async function mailAdminAlert(subject: string, lines: string[]): Promise<void> {
+  if (config.alertEmails.length === 0) return;
+  const text = lines.join("\n");
+  const escaped = lines.map((l) => (l ? l.replace(/[<>&]/g, (ch) => (ch === "<" ? "&lt;" : ch === ">" ? "&gt;" : "&amp;")) : ""));
+  const body = "<p>" + escaped.join("<br/>") + '</p>'
+    + '<p style="color:#6b7280;font-size:12px">网关自动巡检告警，请及时处理。</p>';
+  await sendMail({
+    to: config.alertEmails.join(","),
+    subject: "【" + BRAND + "·告警】" + subject,
+    text,
+    html: wrap(subject, body)
   });
 }

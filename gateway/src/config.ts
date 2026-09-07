@@ -54,6 +54,14 @@ export const config = {
   // Shared secret used to verify inbound sales-channel webhooks (taobao/ERP).
   webhookSecret: process.env.WEBHOOK_SECRET || "change-me-webhook-secret",
 
+  // Ops alert recipients (node offline, provisioning failures, panel API down).
+  // Comma-separated; when empty, alerts are logged but no email is sent.
+  alertEmails: (process.env.ALERT_EMAIL || "")
+    .split(",")
+    .map((e) => e.trim())
+    .filter(Boolean),
+  alertIntervalMinutes: num(process.env.ALERT_INTERVAL_MINUTES, 10),
+
   // Public buyer-portal origin, used to build password-reset links in emails.
   portalOrigin: (process.env.PORTAL_ORIGIN || "http://localhost:5174").replace(/\/$/, ""),
 

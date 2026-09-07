@@ -122,6 +122,17 @@ sudo systemctl restart mcsm-gateway
 ## 运维/备份
 - 网关：`sudo systemctl restart|status mcsm-gateway`，日志 `journalctl -u mcsm-gateway -f`。
 - 面板：`sudo systemctl restart mcsm-web`。
-- 备份：网关 SQLite 文件 `/opt/mcsm-shop/gateway/data/gateway.db`（用 MySQL 则 `mysqldump`）；
-  面板数据在官方安装目录 `/opt/mcsmanager/web/data`。
+- 告警：在 `gateway/.env` 配置 `ALERT_EMAIL=you@example.com`（可逗号多个），
+  网关每 `ALERT_INTERVAL_MINUTES`（默认 10 分钟）巡检一次，节点离线/恢复、面板 API 不可达、
+  订单开通失败会自动发邮件（未配置则仅写日志，前缀 `[ops-alert]`）。
+- 备份：用随仓库提供的脚本做**在线一致性备份**（SQLite `VACUUM INTO`，服务运行中也安全）：
+  ```bash
+  # 可选：连面板数据一起备份
+  sudo PANEL_DATA_DIR=/opt/mcsmanager/web/data /opt/mcsm-shop/deploy/cloud-nodocker/backup.sh
+  # 产物：/var/backups/mcsm-shop/mcsm-shop-YYYYmmdd-HHMMSS.tar.gz（默认保留最近 14 份）
+  # 每天 03:17 定时（追加到 root crontab）：
+  (sudo crontab -l 2>/dev/null; \
+   echo '17 3 * * * /opt/mcsm-shop/deploy/cloud-nodocker/backup.sh >> /var/log/mcsm-backup.log 2>&1') | sudo crontab -
+  ```
+  用 MySQL 则改用 `mysqldump`；面板数据在官方安装目录 `/opt/mcsmanager/web/data`。
 - 游戏存档在各物理机 `/opt/mcsmanager/daemon/data/InstanceData`（分别备份）。
