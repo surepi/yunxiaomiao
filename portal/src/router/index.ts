@@ -5,6 +5,7 @@ import Login from "../pages/Login.vue";
 import Reset from "../pages/Reset.vue";
 import OpenServer from "../pages/OpenServer.vue";
 import Services from "../pages/Services.vue";
+import EmbeddedPanel from "../pages/EmbeddedPanel.vue";
 import Account from "../pages/Account.vue";
 import AdminLogin from "../pages/admin/AdminLogin.vue";
 import AdminDashboard from "../pages/admin/AdminDashboard.vue";
@@ -17,6 +18,7 @@ const router = createRouter({
     { path: "/reset", component: Reset },
     { path: "/open", component: OpenServer, meta: { requiresAuth: true } },
     { path: "/services", component: Services, meta: { requiresAuth: true } },
+    { path: "/panel", component: EmbeddedPanel, meta: { requiresAuth: true, bare: true } },
     { path: "/account", component: Account, meta: { requiresAuth: true } },
     { path: "/console/login", component: AdminLogin },
     { path: "/console", component: AdminDashboard, meta: { requiresAdmin: true } }

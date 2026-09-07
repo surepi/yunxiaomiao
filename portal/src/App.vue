@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { onMounted, ref } from "vue";
-import { useRouter } from "vue-router";
+import { computed, onMounted, ref } from "vue";
+import { useRoute, useRouter } from "vue-router";
 import { useAuthStore } from "./stores/auth";
 import { apiGet } from "./api/client";
 import { t } from "./i18n";
@@ -14,6 +14,8 @@ interface Banner {
 
 const auth = useAuthStore();
 const router = useRouter();
+const route = useRoute();
+const bare = computed(() => Boolean(route.meta.bare));
 
 const banners = ref<Banner[]>([]);
 const dismissed = ref<Set<number>>(new Set());
@@ -50,7 +52,7 @@ function logout() {
 
 <template>
   <div>
-    <header class="nav">
+    <header v-if="!bare" class="nav">
       <div class="container nav-inner">
         <span class="brand">{{ t("brand") }}</span>
         <nav class="nav-links">
@@ -72,7 +74,7 @@ function logout() {
       </div>
     </header>
 
-    <div v-if="banners.length" class="ann-banner-wrap">
+    <div v-if="!bare && banners.length" class="ann-banner-wrap">
       <div
         v-for="b in banners"
         :key="b.id"

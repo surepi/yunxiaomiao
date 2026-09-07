@@ -75,6 +75,14 @@ sudo systemctl reload caddy
 ```
 Caddy 会自动为两个域名申请证书。此时 `https://panel.example.com` 应能打开面板登录页。
 
+> **门户内嵌面板（买家免登）**：买家在「我的服务」点「页面内管理」会在门户页内用
+> iframe 打开面板并自动 SSO 登录。要点：
+> - 门户与面板必须在**同一个主域名**下（如 `portal.example.com` 与 `panel.example.com`），
+>   面板会话 Cookie 才算同站、不会被浏览器当第三方 Cookie 拦截；
+> - Caddyfile 已为面板域名设置 `Content-Security-Policy: frame-ancestors`，
+>   部署时把其中的 `https://portal.example.com` 改成你的真实门户域名；
+> - SSO 跳转地址取自网关 `MCSM_UI_ORIGIN`，需与面板对外域名一致（`https://panel.example.com`）。
+
 ## 5. 面板初始化与 API Key
 1. 浏览器打开 `https://panel.example.com`，按提示创建管理员账号。
 2. 面板设置里开启 API Key：`enableApiKey = ONLY_ADMIN`。

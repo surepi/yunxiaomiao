@@ -98,6 +98,10 @@ async function openConsole(i: MyInstance) {
   }
 }
 
+function openEmbedded(i: MyInstance) {
+  router.push({ path: "/panel", query: { instance: i.instance_id } });
+}
+
 function startRenew(i: MyInstance) {
   renewTarget.value = i;
   renewCode.value = "";
@@ -225,6 +229,7 @@ onMounted(load);
                   </template>
                 </template>
                 <button class="btn sm" @click="openConsole(i)">{{ t("btn_console") }}</button>
+                <button class="btn sm" @click="openEmbedded(i)">{{ t("btn_embed") }}</button>
                 <button class="btn sm ghost" @click="startRenew(i)">{{ t("btn_renew") }}</button>
               </div>
             </td>

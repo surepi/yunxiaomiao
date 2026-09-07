@@ -19,5 +19,13 @@ portal.example.com {
 }
 
 panel.example.com {
+	# Allow the buyer portal to embed the panel in an iframe (方案B 内嵌).
+	# IMPORTANT: portal and panel must share the same registrable domain
+	# (e.g. portal.example.com + panel.example.com) so the panel session
+	# cookie is same-site and not blocked as a third-party cookie.
+	# Strip any upstream framing headers, then allow only self + portal.
+	header -X-Frame-Options
+	header -Content-Security-Policy
+	header Content-Security-Policy "frame-ancestors 'self' https://portal.example.com"
 	reverse_proxy 127.0.0.1:23333
 }
