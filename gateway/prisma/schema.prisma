@@ -30,6 +30,8 @@ model Package {
   fixedNodeId    String   @default("")
   active         Boolean  @default(true)
   sort           Int      @default(0)
+  // Unused-card count below which the overview raises a low-stock alert.
+  lowStock       Int      @default(10)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
@@ -153,4 +155,42 @@ model Announcement {
   updatedAt DateTime  @updatedAt
 
   @@index([active])
+}
+
+// Per-node scheduling overrides for the auto node picker. Nodes themselves are
+// managed by the MCSM panel; this only stores gateway-side preferences keyed by
+// the panel daemon uuid. Weight is a relative capacity multiplier (a node with
+// weight 2 is treated as having twice the capacity of weight 1 when balancing),
+// maxInstances hard-caps how many managed instances may live on the node
+// (0 = unlimited), and enabled=false removes the node from auto scheduling.
+model NodeConfig {
+  id           Int      @id @default(autoincrement())
+  daemonId     String   @unique
+  weight       Int      @default(1)
+  maxInstances Int      @default(0)
+  enabled      Boolean  @default(true)
+  note         String   @default("")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([enabled])
+}
+
+// Admin console audit trail. Every mutating admin request (POST/PUT/DELETE) is
+// recorded after the response is sent, including the acting admin, route,
+// status code and a truncated body snapshot. Read-only list endpoint only.
+model AdminAuditLog {
+  id        Int      @id @default(autoincrement())
+  admin     String
+  method    String
+  path      String
+  status    Int      @default(0)
+  // Truncated JSON snapshot of the request body (no secrets are logged here:
+  // password fields are redacted before writing).
+  detail    String   @default("")
+  ip        String   @default("")
+  createdAt DateTime @default(now())
+
+  @@index([admin])
+  @@index([createdAt])
 }

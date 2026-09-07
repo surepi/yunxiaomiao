@@ -1,3 +1,11 @@
+export interface NodeConfig {
+  daemonId: string;
+  weight: number;
+  maxInstances: number;
+  enabled: boolean;
+  note: string;
+}
+
 export interface AdminNode {
   uuid: string;
   ip: string;
@@ -5,6 +13,7 @@ export interface AdminNode {
   remarks?: string;
   available: boolean;
   ping: { name: string; running: number; instances: number; available: boolean } | null;
+  config: NodeConfig;
 }
 
 export interface AdminPackage {
@@ -21,6 +30,7 @@ export interface AdminPackage {
   fixedNodeId: string;
   active: boolean;
   sort: number;
+  lowStock: number;
 }
 
 export interface AdminCard {
@@ -33,6 +43,18 @@ export interface AdminCard {
   usedAt: string | null;
   expiresAt: string | null;
   package?: { id: number; name: string };
+}
+
+export interface CardBatch {
+  batchNo: string;
+  packageId: number;
+  packageName: string;
+  total: number;
+  unused: number;
+  used: number;
+  disabled: number;
+  expiresAt: string | null;
+  createdAt: string;
 }
 
 export interface AdminOrder {
@@ -113,5 +135,16 @@ export interface WebhookEventItem {
   signatureOk: boolean;
   processed: boolean;
   note: string;
+  createdAt: string;
+}
+
+export interface AdminAuditItem {
+  id: number;
+  admin: string;
+  method: string;
+  path: string;
+  status: number;
+  detail: string;
+  ip: string;
   createdAt: string;
 }

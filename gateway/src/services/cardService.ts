@@ -66,3 +66,68 @@ export async function setCardStatus(id: number, status: "unused" | "disabled") {
   if (card.status === "used") throw badRequest("Used cards cannot be modified", "CARD_USED");
   return prisma.redeemCard.update({ where: { id }, data: { status } });
 }
+
+export interface CardBatch {
+  batchNo: string;
+  packageId: number;
+  packageName: string;
+  total: number;
+  unused: number;
+  used: number;
+  disabled: number;
+  expiresAt: string | null;
+  createdAt: string;
+}
+
+/** Aggregate cards by batch number for the admin batch-management view. */
+export async function listBatches(): Promise<CardBatch[]> {
+  const groups = await prisma.redeemCard.groupBy({
+    by: ["batchNo", "packageId"],
+    _count: { _all: true },
+    _min: { createdAt: true, expiresAt: true }
+  });
+  const countsByStatus = await prisma.redeemCard.groupBy({
+    by: ["batchNo", "status"],
+    _count: { _all: true }
+  });
+  const packages = await prisma.package.findMany({ select: { id: true, name: true } });
+  const pkgName = new Map(packages.map((p) => [p.id, p.name]));
+  const statusMap = new Map<string, { unused: number; used: number; disabled: number }>();
+  for (const c of countsByStatus) {
+    const row = statusMap.get(c.batchNo) ?? { unused: 0, used: 0, disabled: 0 };
+    if (c.status === "unused") row.unused += c._count._all;
+    else if (c.status === "used") row.used += c._count._all;
+    else if (c.status === "disabled") row.disabled += c._count._all;
+    statusMap.set(c.batchNo, row);
+  }
+  return groups
+    .filter((g) => g.batchNo)
+    .map((g) => {
+      const st = statusMap.get(g.batchNo) ?? { unused: 0, used: 0, disabled: 0 };
+      return {
+        batchNo: g.batchNo,
+        packageId: g.packageId,
+        packageName: pkgName.get(g.packageId) ?? String(g.packageId),
+        total: g._count._all,
+        unused: st.unused,
+        used: st.used,
+        disabled: st.disabled,
+        expiresAt: g._min.expiresAt ? g._min.expiresAt.toISOString() : null,
+        createdAt: (g._min.createdAt ?? new Date(0)).toISOString()
+      };
+    })
+    .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
+}
+
+/**
+ * Enable/disable every non-used card in a batch. Used cards are never touched
+ * (they belong to completed orders). Returns how many cards changed state.
+ */
+export async function setBatchStatus(batchNo: string, status: "unused" | "disabled"): Promise<number> {
+  if (!batchNo) throw badRequest("batchNo is required", "BAD_BATCH");
+  const result = await prisma.redeemCard.updateMany({
+    where: { batchNo, status: status === "disabled" ? "unused" : "disabled" },
+    data: { status }
+  });
+  return result.count;
+}

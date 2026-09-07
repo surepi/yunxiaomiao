@@ -1,3 +1,5 @@
+import { t } from "../i18n";
+
 const BASE = (import.meta.env.VITE_GATEWAY_URL as string) || "";
 
 let token: string = localStorage.getItem("gw_token") || "";
@@ -50,7 +52,14 @@ export async function api<T>(
   }
   if (!res.ok) {
     const err = data as ApiError | null;
-    throw new Error(err?.message || `HTTP ${res.status}`);
+    let message = err?.message || `HTTP ${res.status}`;
+    // Prefer a localized message for known gateway error codes.
+    if (err?.code) {
+      const lookup = `apierr_${err.code}`;
+      const localized = t(lookup as Parameters<typeof t>[0]);
+      if (localized !== lookup) message = localized;
+    }
+    throw new Error(message);
   }
   return data as T;
 }

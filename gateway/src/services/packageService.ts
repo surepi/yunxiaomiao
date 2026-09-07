@@ -61,6 +61,7 @@ export async function createPackage(data: {
   fixedNodeId?: string;
   active?: boolean;
   sort?: number;
+  lowStock?: number;
 }) {
   return withPrisma(
     prisma.package.create({
@@ -76,7 +77,8 @@ export async function createPackage(data: {
         nodeStrategy: data.nodeStrategy ?? "auto",
         fixedNodeId: data.fixedNodeId ?? "",
         active: data.active ?? true,
-        sort: data.sort ?? 0
+        sort: data.sort ?? 0,
+        lowStock: data.lowStock ?? 10
       }
     })
   );

@@ -1,7 +1,6 @@
 import { prisma } from "../db/prisma";
 import { listNodesOverview, NodeOverview } from "./nodeService";
 
-const LOW_STOCK = 10;
 
 export interface OverviewAlert {
   level: "warn" | "err";
@@ -18,12 +17,13 @@ export interface StockRow {
   disabled: number;
   low: boolean;
   soldOut: boolean;
+  threshold: number;
 }
 
 /** Aggregate business/ops stats for the admin overview dashboard. */
 export async function getOverview() {
   const [packages, cards, orders, instances, nodes] = await Promise.all([
-    prisma.package.findMany({ select: { id: true, name: true, slug: true, active: true } }),
+    prisma.package.findMany({ select: { id: true, name: true, slug: true, active: true, lowStock: true } }),
     prisma.redeemCard.findMany({ select: { status: true, packageId: true } }),
     prisma.order.findMany({ select: { status: true, amountFen: true, createdAt: true } }),
     prisma.provisionedInstance.findMany({ select: { status: true, expireAt: true } }),
@@ -34,7 +34,8 @@ export async function getOverview() {
   for (const p of packages) {
     stockMap.set(p.id, {
       packageId: p.id, name: p.name, slug: p.slug, active: p.active,
-      unused: 0, used: 0, disabled: 0, low: false, soldOut: false
+      unused: 0, used: 0, disabled: 0, low: false, soldOut: false,
+      threshold: p.lowStock
     });
   }
 
@@ -49,7 +50,7 @@ export async function getOverview() {
   const stock = Array.from(stockMap.values())
     .map((r) => ({
       ...r,
-      low: r.unused > 0 && r.unused < LOW_STOCK,
+      low: r.unused > 0 && r.unused < r.threshold,
       soldOut: r.unused === 0
     }))
     .sort((a, b) => a.unused - b.unused);

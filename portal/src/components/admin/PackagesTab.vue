@@ -24,13 +24,14 @@ interface PkgForm {
   fixedNodeId: string;
   active: boolean;
   sort: number;
+  lowStock: number;
   setupInfo: string;
   resourceLimits: string;
 }
 
 const form = reactive<PkgForm>({
   name: "", slug: "", description: "", priceFen: 0, hours: 720,
-  mcsmCategoryId: 1, nodeStrategy: "auto", fixedNodeId: "", active: true, sort: 0,
+  mcsmCategoryId: 1, nodeStrategy: "auto", fixedNodeId: "", active: true, sort: 0, lowStock: 10,
   setupInfo: "{}", resourceLimits: "{}"
 });
 
@@ -70,7 +71,7 @@ async function load() {
 function resetForm() {
   Object.assign(form, {
     name: "", slug: "", description: "", priceFen: 0, hours: 720,
-    mcsmCategoryId: 1, nodeStrategy: "auto", fixedNodeId: "", active: true, sort: 0,
+    mcsmCategoryId: 1, nodeStrategy: "auto", fixedNodeId: "", active: true, sort: 0, lowStock: 10,
     setupInfo: "{}", resourceLimits: "{}"
   });
   formError.value = "";
@@ -87,7 +88,7 @@ function openEdit(p: AdminPackage) {
   Object.assign(form, {
     name: p.name, slug: p.slug, description: p.description, priceFen: p.priceFen,
     hours: p.hours, mcsmCategoryId: p.mcsmCategoryId, nodeStrategy: (p.nodeStrategy as "auto" | "fixed") || "auto",
-    fixedNodeId: p.fixedNodeId || "", active: p.active, sort: p.sort,
+    fixedNodeId: p.fixedNodeId || "", active: p.active, sort: p.sort, lowStock: p.lowStock ?? 10,
     setupInfo: p.setupInfo, resourceLimits: p.resourceLimits || "{}"
   });
   formError.value = "";
@@ -147,6 +148,7 @@ async function save() {
     fixedNodeId: form.nodeStrategy === "fixed" ? form.fixedNodeId : "",
     active: form.active,
     sort: Number(form.sort) || 0,
+    lowStock: Number(form.lowStock) || 0,
     setupInfo: JSON.stringify(setup),
     resourceLimits: JSON.stringify(limits)
   };
@@ -231,6 +233,7 @@ onMounted(load);
             </select>
           </div>
           <div class="field"><label>{{ t("admin_field_sort") }}</label><input v-model.number="form.sort" type="number" /></div>
+          <div class="field"><label>{{ t("admin_field_lowstock") }}</label><input v-model.number="form.lowStock" type="number" min="0" /></div>
           <div class="field"><label>{{ t("admin_field_active") }}</label>
             <label style="font-weight:400"><input type="checkbox" v-model="form.active" style="width:auto" /> {{ t("admin_status_on") }}</label>
           </div>

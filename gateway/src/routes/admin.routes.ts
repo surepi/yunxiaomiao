@@ -3,9 +3,10 @@ import { z } from "zod";
 import { requireAdmin } from "../security/guards";
 import * as packageService from "../services/packageService";
 import * as cardService from "../services/cardService";
-import { listNodesOverview } from "../services/nodeService";
+import { listNodesOverview, upsertNodeConfig } from "../services/nodeService";
 import { getOverview } from "../services/statsService";
 import * as announcementService from "../services/announcementService";
+import * as auditService from "../services/auditService";
 import { prisma } from "../db/prisma";
 import { Prisma } from "@prisma/client";
 import { panelClient } from "../panel/client";
@@ -39,7 +40,8 @@ const packageSchema = z.object({
   nodeStrategy: z.enum(["auto", "fixed"]).default("auto"),
   fixedNodeId: z.string().optional().default(""),
   active: z.boolean().optional().default(true),
-  sort: z.number().int().optional().default(0)
+  sort: z.number().int().optional().default(0),
+  lowStock: z.number().int().min(0).max(100000).optional().default(10)
 });
 // Update accepts any subset of the create payload.
 const packageUpdateSchema = packageSchema.partial();
@@ -53,6 +55,17 @@ const generateSchema = z.object({
 
 const cardStatusSchema = z.object({
   status: z.enum(["unused", "disabled"])
+});
+
+const batchStatusSchema = z.object({
+  status: z.enum(["unused", "disabled"])
+});
+
+const nodeConfigSchema = z.object({
+  weight: z.number().int().min(1).max(100).optional(),
+  maxInstances: z.number().int().min(0).max(10000).optional(),
+  enabled: z.boolean().optional(),
+  note: z.string().max(120).optional()
 });
 
 const announcementSchema = z.object({
@@ -96,6 +109,20 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
     (req as unknown as { admin: { username: string } }).admin = await requireAdmin(req);
   });
 
+  // Audit trail: record every mutating admin request after it completes.
+  app.addHook("onResponse", async (req, rep) => {
+    if (!["POST", "PUT", "DELETE"].includes(req.method)) return;
+    const admin = (req as unknown as { admin?: { username: string } }).admin?.username ?? "";
+    await auditService.logAdminAction({
+      admin,
+      method: req.method,
+      path: req.url.split("?")[0],
+      status: rep.statusCode,
+      body: req.body,
+      ip: req.ip
+    });
+  });
+
   app.get("/admin/packages", async () => {
     return { packages: await packageService.listAllPackages() };
   });
@@ -137,10 +164,21 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
     };
   });
 
+  app.get("/admin/cards/batches", async () => {
+    return { batches: await cardService.listBatches() };
+  });
+
   app.post("/admin/cards/:id/status", async (req) => {
     const id = parseId((req.params as { id: string }).id);
     const body = parse(cardStatusSchema, req.body);
     return { card: await cardService.setCardStatus(id, body.status) };
+  });
+
+  app.post("/admin/cards/batches/:batchNo/status", async (req) => {
+    const batchNo = decodeURIComponent((req.params as { batchNo: string }).batchNo);
+    const body = parse(batchStatusSchema, req.body);
+    const changed = await cardService.setBatchStatus(batchNo, body.status);
+    return { changed };
   });
 
   app.get("/admin/templates", async () => {
@@ -150,6 +188,12 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
 
   app.get("/admin/nodes", async () => {
     return { nodes: await listNodesOverview() };
+  });
+
+  app.put("/admin/nodes/config/:daemonId", async (req) => {
+    const daemonId = (req.params as { daemonId: string }).daemonId;
+    const body = parse(nodeConfigSchema, req.body);
+    return { config: await upsertNodeConfig(daemonId, body) };
   });
 
   app.get("/admin/overview", async () => {
@@ -257,5 +301,10 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
       take: 200
     });
     return { events };
+  });
+
+  app.get("/admin/audit", async (req) => {
+    const q = req.query as { admin?: string; q?: string; from?: string; to?: string };
+    return { logs: await auditService.listAudit(q) };
   });
 }

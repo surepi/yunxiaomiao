@@ -5,7 +5,7 @@ import { signUserToken, signAdminToken } from "../security/jwt";
 import { hashPassword, verifyPassword } from "../security/password";
 import { config } from "../config";
 import { mailPasswordReset } from "../notify/emails";
-import { badRequest, unauthorized, upstream } from "../errors";
+import { badRequest, forbidden, unauthorized, upstream } from "../errors";
 import { accountKey, assertNotLocked, recordLoginFailure, recordLoginSuccess } from "../security/loginGuard";
 
 export function validateUsername(username: string): void {
@@ -15,6 +15,17 @@ export function validateUsername(username: string): void {
 }
 
 /** Basic email shape check; the address is only used for notifications/reset. */
+/**
+ * Reject panel-side privileged accounts on the buyer portal. This covers the
+ * reserved name blocklist (default: the MCSM super admin "root") and any panel
+ * account whose permission level marks it as an administrator (>= 10).
+ */
+export function assertBuyerAllowed(username: string): void {
+  if (config.buyerReservedUsernames.includes(username.trim().toLowerCase())) {
+    throw forbidden("This account is a panel administrator and cannot sign in to the buyer portal", "RESERVED_ACCOUNT");
+  }
+}
+
 export function validateEmail(email: string): void {
   const value = (email || "").trim();
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value) || value.length > 128) {
@@ -48,6 +59,7 @@ export async function register(
   validateUsername(username);
   validatePassword(password);
   validateEmail(email);
+  assertBuyerAllowed(username);
   const normalized = email.trim().toLowerCase();
   const byEmail = await prisma.userProfile.findUnique({ where: { email: normalized } });
   if (byEmail && byEmail.username !== username) {
@@ -145,6 +157,7 @@ export async function changePassword(
 /** Verify buyer credentials against the panel and issue a gateway JWT. */
 export async function login(username: string, password: string): Promise<{ token: string; username: string }> {
   validateUsername(username);
+  assertBuyerAllowed(username);
   const key = accountKey("user", username);
   assertNotLocked(key);
   try {
@@ -152,6 +165,12 @@ export async function login(username: string, password: string): Promise<{ token
   } catch {
     recordLoginFailure(key);
     throw unauthorized("Invalid username or password", "LOGIN_FAILED");
+  }
+  // Defence in depth: even if the name is not on the blocklist, a panel
+  // super-admin account (permission >= 10) must never get a buyer token.
+  const panelUser = await panelClient.getPanelUser(username).catch(() => null);
+  if (panelUser && panelUser.permission >= 10) {
+    throw forbidden("This account is a panel administrator and cannot sign in to the buyer portal", "RESERVED_ACCOUNT");
   }
   recordLoginSuccess(key);
   return { token: signUserToken(username), username };

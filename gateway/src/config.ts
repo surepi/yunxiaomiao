@@ -19,6 +19,14 @@ export const config = {
   adminUsername: process.env.ADMIN_USERNAME || "admin",
   adminPassword: process.env.ADMIN_PASSWORD || "admin123456",
 
+  // Panel usernames that must never be used as buyer portal accounts. The
+  // MCSM panel ships with a super admin ("root", permission=10); even with the
+  // correct password such accounts may not log in or register on the buyer side.
+  buyerReservedUsernames: (process.env.BUYER_RESERVED_USERNAMES || "root")
+    .split(",")
+    .map((u) => u.trim().toLowerCase())
+    .filter(Boolean),
+
   panelBaseUrl: (process.env.PANEL_BASE_URL || "http://localhost:23333").replace(/\/$/, ""),
   panelApiKey: process.env.PANEL_API_KEY || "",
   mcsmUiOrigin: (process.env.MCSM_UI_ORIGIN || "http://localhost:23333").replace(/\/$/, ""),

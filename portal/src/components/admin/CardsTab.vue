@@ -1,16 +1,18 @@
 <script setup lang="ts">
 import { onMounted, ref } from "vue";
 import { apiGet, apiPost } from "../../api/client";
-import type { AdminPackage, AdminCard } from "../../api/adminTypes";
+import type { AdminPackage, AdminCard, CardBatch } from "../../api/adminTypes";
 import { t } from "../../i18n";
 import { copyText } from "../../utils/format";
 
 const packages = ref<AdminPackage[]>([]);
 const cards = ref<AdminCard[]>([]);
+const batches = ref<CardBatch[]>([]);
 const loading = ref(true);
 
 const filterPkg = ref<number>(0);
 const filterStatus = ref<string>("");
+const filterBatch = ref<string>("");
 
 const genPkg = ref<number>(0);
 const genCount = ref<number>(10);
@@ -31,16 +33,21 @@ async function loadCards() {
     const q = new URLSearchParams();
     if (filterPkg.value) q.set("packageId", String(filterPkg.value));
     if (filterStatus.value) q.set("status", filterStatus.value);
+    if (filterBatch.value) q.set("batchNo", filterBatch.value);
     const res = await apiGet<{ cards: AdminCard[] }>(`/admin/cards?${q.toString()}`, { admin: true });
     cards.value = res.cards;
   } finally {
     loading.value = false;
   }
 }
+async function loadBatches() {
+  const res = await apiGet<{ batches: CardBatch[] }>("/admin/cards/batches", { admin: true });
+  batches.value = res.batches;
+}
 
 async function generate() {
   genError.value = "";
-  if (!genPkg.value) { genError.value = "请选择套餐"; return; }
+  if (!genPkg.value) { genError.value = t("admin_cards_need_pkg"); return; }
   genBusy.value = true;
   try {
     const res = await apiPost<{ cards: AdminCard[] }>(
@@ -49,7 +56,7 @@ async function generate() {
       { admin: true }
     );
     generated.value = res.cards || [];
-    await loadCards();
+    await Promise.all([loadCards(), loadBatches()]);
   } catch (e) {
     genError.value = e instanceof Error ? e.message : t("err_generic");
   } finally {
@@ -78,6 +85,23 @@ function downloadCsv(list: AdminCard[], filename: string) {
 async function setStatus(c: AdminCard, status: "unused" | "disabled") {
   await apiPost(`/admin/cards/${c.id}/status`, { status }, { admin: true });
   await loadCards();
+  await loadBatches();
+}
+async function setBatchStatus(b: CardBatch, status: "unused" | "disabled") {
+  const key = status === "disabled" ? "admin_cards_batch_disable_confirm" : "admin_cards_batch_enable_confirm";
+  if (!confirm(t(key, { batch: b.batchNo }))) return;
+  await apiPost(`/admin/cards/batches/${encodeURIComponent(b.batchNo)}/status`, { status }, { admin: true });
+  await Promise.all([loadCards(), loadBatches()]);
+}
+function filterByBatch(b: CardBatch) {
+  filterBatch.value = filterBatch.value === b.batchNo ? "" : b.batchNo;
+  loadCards();
+}
+async function exportBatch(b: CardBatch) {
+  const q = new URLSearchParams({ batchNo: b.batchNo, status: "unused" });
+  const res = await apiGet<{ cards: AdminCard[] }>(`/admin/cards?${q.toString()}`, { admin: true });
+  if (res.cards.length === 0) { alert(t("admin_cards_b_empty")); return; }
+  downloadCsv(res.cards, `cards-${b.batchNo}-unused.csv`);
 }
 function statusLabel(s: string): string {
   return s === "unused" ? t("admin_cards_status_unused") : s === "used" ? t("admin_cards_status_used") : t("admin_cards_status_disabled");
@@ -88,7 +112,7 @@ function fmt(ts: string | null): string {
 
 onMounted(async () => {
   await loadPackages();
-  await loadCards();
+  await Promise.all([loadCards(), loadBatches()]);
 });
 </script>
 
@@ -123,23 +147,59 @@ onMounted(async () => {
       </div>
     </div>
 
+    <!-- batches -->
+    <h3 style="margin:18px 0 8px">{{ t("admin_cards_batches") }}</h3>
+    <div v-if="batches.length === 0" class="muted" style="padding:8px 0">{{ t("admin_empty") }}</div>
+    <table v-else>
+      <thead>
+        <tr>
+          <th>{{ t("admin_col_batch") }}</th><th>{{ t("admin_col_pkg") }}</th>
+          <th>{{ t("admin_cards_b_unused") }}</th><th>{{ t("admin_cards_b_used") }}</th>
+          <th>{{ t("admin_cards_b_disabled") }}</th><th>{{ t("admin_col_time") }}</th>
+          <th>{{ t("admin_cards_b_expire") }}</th><th></th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr v-for="b in batches" :key="b.batchNo" :class="{ sel: filterBatch === b.batchNo }">
+          <td style="font-family:monospace">{{ b.batchNo }}</td>
+          <td>{{ b.packageName }}</td>
+          <td><strong :class="b.unused === 0 ? 'muted' : ''">{{ b.unused }}</strong> / {{ b.total }}</td>
+          <td>{{ b.used }}</td>
+          <td>{{ b.disabled }}</td>
+          <td>{{ fmt(b.createdAt) }}</td>
+          <td>{{ fmt(b.expiresAt) }}</td>
+          <td>
+            <span style="display:flex;gap:6px;flex-wrap:wrap">
+              <button class="btn sm ghost" @click="filterByBatch(b)">{{ filterBatch === b.batchNo ? t("admin_cards_b_clearfilter") : t("admin_cards_b_filter") }}</button>
+              <button class="btn sm ghost" @click="exportBatch(b)">{{ t("admin_cards_b_export") }}</button>
+              <button v-if="b.unused > 0" class="btn sm ghost" style="color:var(--warn)" @click="setBatchStatus(b, 'disabled')">{{ t("admin_cards_disable") }}</button>
+              <button v-else-if="b.disabled > 0 && b.unused === 0" class="btn sm ghost" @click="setBatchStatus(b, 'unused')">{{ t("admin_cards_enable") }}</button>
+            </span>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+
     <!-- filters -->
     <div class="gen-row" style="margin:14px 0">
-      <label>套餐
+      <label>{{ t("admin_cards_pkg") }}
         <select v-model="filterPkg" @change="loadCards">
-          <option :value="0">全部</option>
+          <option :value="0">{{ t("admin_filter_all") }}</option>
           <option v-for="p in packages" :key="p.id" :value="p.id">{{ p.name }}</option>
         </select>
       </label>
-      <label>状态
+      <label>{{ t("admin_col_status") }}
         <select v-model="filterStatus" @change="loadCards">
-          <option value="">全部</option>
+          <option value="">{{ t("admin_filter_all") }}</option>
           <option value="unused">{{ t("admin_cards_status_unused") }}</option>
           <option value="used">{{ t("admin_cards_status_used") }}</option>
           <option value="disabled">{{ t("admin_cards_status_disabled") }}</option>
         </select>
       </label>
       <button class="btn sm ghost" @click="downloadCsv(cards, 'cards-list.csv')">{{ t("admin_export_csv") }}</button>
+      <span v-if="filterBatch" class="badge exp" style="cursor:pointer" @click="filterByBatch({ batchNo: filterBatch } as CardBatch)">
+        {{ t("admin_cards_b_filter") }}: {{ filterBatch }} ✕
+      </span>
     </div>
 
     <div v-if="loading" class="muted">{{ t("loading") }}</div>

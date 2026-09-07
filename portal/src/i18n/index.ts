@@ -301,7 +301,41 @@ const messages = {
     wh_proc_all: "全部状态",
     wh_provider_all: "全部来源",
     wh_empty: "暂无 webhook 事件，对接淘宝/ERP 后会在此显示。",
-    wh_toggle_payload: "查看报文"
+    wh_toggle_payload: "查看报文",
+
+    saving: "保存中…",
+    admin_tab_audit: "操作日志",
+    admin_audit_admin: "管理员",
+    admin_audit_method: "方法",
+    admin_audit_path: "路径",
+    apierr_RESERVED_ACCOUNT: "该账号是面板管理员账号，不能在买家门户登录或注册",
+    apierr_RATE_LIMITED: "操作过于频繁，请稍后再试",
+    apierr_NODE_DOWN: "所选节点暂不可用，请换一个节点或稍后再试",
+    apierr_NO_NODE: "暂无可分配的节点，请稍后再试或联系客服",
+
+    admin_field_lowstock: "低库存阈值",
+    admin_nodes_addr: "节点地址",
+    admin_nodes_remark: "备注",
+    admin_nodes_load: "实例数/上限",
+    admin_nodes_weight: "调度权重",
+    admin_nodes_cap: "实例上限",
+    admin_nodes_enabled: "参与调度",
+    admin_nodes_note_ph: "节点备注",
+    admin_nodes_cap_hint: "0 表示不限制",
+    admin_nodes_hint: "权重越大代表容量越大，自动选节点时按「负载 ÷ 权重」均衡分配；实例上限为 0 表示不限；取消勾选「参与调度」可临时把节点移出自动分配（不影响已开通的实例）。",
+
+    admin_cards_need_pkg: "请选择套餐",
+    admin_cards_batches: "卡密批次",
+    admin_cards_b_unused: "未用/总数",
+    admin_cards_b_used: "已用",
+    admin_cards_b_disabled: "已停用",
+    admin_cards_b_expire: "有效期至",
+    admin_cards_b_filter: "筛选",
+    admin_cards_b_clearfilter: "取消筛选",
+    admin_cards_b_export: "导出未用",
+    admin_cards_b_empty: "该批次没有未使用的卡密",
+    admin_cards_batch_disable_confirm: "确认停用批次 {batch} 中所有未使用的卡密？",
+    admin_cards_batch_enable_confirm: "确认重新启用批次 {batch} 中已停用的卡密？"
   }
 } as const;
 

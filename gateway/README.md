@@ -96,10 +96,14 @@ Schema 字段全部使用可移植类型（JSON 以字符串存），切换步�
 | `POST` | `/admin/cards/generate` | 批量生成卡密 `{packageId,count,batchNo?,expiresAt?}` |
 | `GET` | `/admin/cards` | 卡密查询（支持按套餐 / 批次 / 状态过滤） |
 | `POST` | `/admin/cards/:id/status` | 启用 / 停用卡密 |
-| `GET` | `/admin/nodes` | 节点列表与在线状态 / 负载 |
-| `GET` | `/admin/overview` | 概览统计与低库存预警 |
+| `GET` | `/admin/cards/batches` | 卡密批次汇总（每批次 未用/已用/停用 数量） |
+| `POST` | `/admin/cards/batches/:batchNo/status` | 整批启用 / 停用（已使用卡密不受影响） |
+| `GET` | `/admin/nodes` | 节点列表与在线状态 / 负载 / 调度配置 |
+| `PUT` | `/admin/nodes/config/:daemonId` | 节点调度权重 / 实例上限 / 是否参与自动调度 |
+| `GET` | `/admin/overview` | 概览统计与低库存预警（阈值按套餐 `lowStock`） |
 | `GET` | `/admin/orders` | 订单记录 |
 | `GET` | `/admin/instances` | 全部开通实例台账 |
+| `GET` | `/admin/audit` | 管理员操作日志（所有后台写操作自动留痕，支持按路径/管理员筛选） |
 
 预留：`POST /webhooks/taobao`（HMAC-SHA256，头 `X-Webhook-Signature`，密钥 `WEBHOOK_SECRET`）。
 v1 仅验签落库返回 202，自动直开待接 ERP / 聚水潭或淘宝 TOP。

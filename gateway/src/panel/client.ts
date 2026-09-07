@@ -163,20 +163,30 @@ class PanelClient {
     await this.call("POST", "/api/auth/login", { username, password, code: "" });
   }
 
-  /** Find a panel user's UUID by username (admin apiKey). Returns "" if absent. */
-  async getUserUuid(username: string): Promise<string> {
+  /** Find a panel user by username (admin apiKey). Returns null if absent. */
+  async getPanelUser(username: string): Promise<{ uuid: string; userName: string; permission: number } | null> {
     const res = await this.call<unknown>(
       "GET",
       `/api/auth?userName=${encodeURIComponent(username)}`
     );
-    type Row = { uuid?: string; userName?: string };
+    type Row = { uuid?: string; userName?: string; permission?: number };
     const list: Row[] = Array.isArray(res)
       ? (res as Row[])
       : Array.isArray((res as { data?: unknown[] })?.data)
       ? ((res as { data: Row[] }).data)
       : [];
     const found = list.find((u) => u && u.userName === username);
-    return found?.uuid ?? "";
+    if (!found?.uuid) return null;
+    return {
+      uuid: found.uuid,
+      userName: found.userName ?? username,
+      permission: typeof found.permission === "number" ? found.permission : 1
+    };
+  }
+
+  /** Find a panel user's UUID by username (admin apiKey). Returns "" if absent. */
+  async getUserUuid(username: string): Promise<string> {
+    return (await this.getPanelUser(username))?.uuid ?? "";
   }
 
   /** Reset a user's password as admin (requires the panel user uuid). */
