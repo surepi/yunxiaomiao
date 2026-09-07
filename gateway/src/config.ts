@@ -26,8 +26,38 @@ export const config = {
   databaseUrl: process.env.DATABASE_URL || "file:./data/gateway.db",
   reconcileIntervalMinutes: num(process.env.RECONCILE_INTERVAL_MINUTES, 60),
 
+  // Brute-force protection: after LOGIN_MAX_FAILURES consecutive bad logins for
+  // the same account, that account is locked for LOGIN_LOCKOUT_MINUTES. This is
+  // per-account (on top of the per-IP rate limiter) and in-memory.
+  loginMaxFailures: num(process.env.LOGIN_MAX_FAILURES, 5),
+  loginLockoutMinutes: num(process.env.LOGIN_LOCKOUT_MINUTES, 15),
+
+  // Expired-instance lifecycle. After a server expires the panel stops it; the
+  // gateway then waits GRACE_PERIOD_DAYS before archiving. AUTO_DELETE_EXPIRED
+  // is off by default (we only warn), so nothing is ever destroyed without an
+  // explicit opt-in. When enabled, the panel instance is deleted after a
+  // metadata snapshot is written to BACKUP_DIR; DELETE_INSTANCE_FILES also wipes
+  // the daemon files (kept by default as a manual recovery safety net).
+  gracePeriodDays: num(process.env.GRACE_PERIOD_DAYS, 7),
+  autoDeleteExpired: process.env.AUTO_DELETE_EXPIRED === "true",
+  deleteInstanceFiles: process.env.DELETE_INSTANCE_FILES === "true",
+  backupDir: process.env.BACKUP_DIR || "data/backups",
+
   // Shared secret used to verify inbound sales-channel webhooks (taobao/ERP).
   webhookSecret: process.env.WEBHOOK_SECRET || "change-me-webhook-secret",
+
+  // Public buyer-portal origin, used to build password-reset links in emails.
+  portalOrigin: (process.env.PORTAL_ORIGIN || "http://localhost:5174").replace(/\/$/, ""),
+
+  // Email (SMTP). Disabled by default; provision/renew/expiry/reset mail is
+  // skipped (only logged) until explicitly enabled and configured.
+  mailEnabled: process.env.SMTP_ENABLED === "true",
+  smtpHost: process.env.SMTP_HOST || "",
+  smtpPort: num(process.env.SMTP_PORT, 587),
+  smtpSecure: process.env.SMTP_SECURE === "true",
+  smtpUser: process.env.SMTP_USER || "",
+  smtpPass: process.env.SMTP_PASS || "",
+  mailFrom: process.env.MAIL_FROM || "云小喵 <no-reply@example.com>",
 
   isProd: process.env.NODE_ENV === "production"
 };

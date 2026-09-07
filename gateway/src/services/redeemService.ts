@@ -4,6 +4,72 @@ import { badRequest, conflict, notFound } from "../errors";
 import { logger } from "../logger";
 import { selectNode } from "./nodeService";
 import { buildPayload } from "./payloadBuilder";
+import { getEmail } from "./authService";
+import { mailProvisioned, mailRenewed } from "../notify/emails";
+import type { InstanceInfo, PanelNode } from "../panel/client";
+
+function hostOfNode(nodes: PanelNode[], daemonId: string): string {
+  const node = nodes.find((x) => x.uuid === daemonId);
+  if (!node?.ip) return "";
+  return node.ip.replace(/^wss?:\/\//i, "").replace(/\/.*$/, "").trim();
+}
+
+/** Best-effort confirmation email after a server is provisioned. Never throws. */
+async function notifyProvisioned(
+  username: string,
+  result: { instance_id: string; expire: number; instance_info?: unknown },
+  node: { daemonId: string; remarks: string }
+): Promise<void> {
+  try {
+    const email = await getEmail(username);
+    if (!email) return;
+    const info = result.instance_info as InstanceInfo | undefined;
+    const instanceName = info?.name || result.instance_id.slice(0, 8);
+    let addresses: string[] = [];
+    if (info?.ports?.length) {
+      const nodes = await panelClient.listNodes().catch(() => [] as PanelNode[]);
+      const host = hostOfNode(nodes, node.daemonId);
+      addresses = info.ports.map((pt) => (host ? `${host}:${pt.host}` : `${pt.host}`));
+    }
+    await mailProvisioned({
+      username,
+      email,
+      instanceName,
+      nodeName: node.remarks || undefined,
+      expireAt: result.expire ? new Date(result.expire).toLocaleString() : undefined,
+      addresses
+    });
+  } catch (err) {
+    logger.warn(`notifyProvisioned skipped: ${err instanceof Error ? err.message : err}`);
+  }
+}
+
+/** Best-effort confirmation email after a renewal. Never throws. */
+async function notifyRenewed(
+  username: string,
+  instance: { instanceUuid: string; raw: string },
+  expire: number
+): Promise<void> {
+  try {
+    const email = await getEmail(username);
+    if (!email) return;
+    let instanceName = instance.instanceUuid.slice(0, 8);
+    try {
+      const raw = JSON.parse(instance.raw || "{}") as InstanceInfo;
+      if (raw?.name) instanceName = raw.name;
+    } catch {
+      /* ignore malformed raw */
+    }
+    await mailRenewed({
+      username,
+      email,
+      instanceName,
+      expireAt: expire ? new Date(expire).toLocaleString() : undefined
+    });
+  } catch (err) {
+    logger.warn(`notifyRenewed skipped: ${err instanceof Error ? err.message : err}`);
+  }
+}
 
 export interface RedeemResult {
   instanceId: string;
@@ -99,6 +165,7 @@ export async function redeem(username: string, code: string, preferredNodeId?: s
     }
 
     logger.info(`Provisioned instance ${result.instance_id} on ${node.daemonId} for ${username} (order ${order.orderNo})`);
+    void notifyProvisioned(username, result, node).catch(() => undefined);
     return {
       instanceId: result.instance_id,
       daemonId: node.daemonId,
@@ -140,6 +207,11 @@ export async function renew(
   });
   if (!instance || instance.username !== username) {
     throw notFound("Instance not found for this account", "INSTANCE_NOT_FOUND");
+  }
+  // Archived instances were deleted from the panel after the grace period; they
+  // cannot be renewed and must be re-provisioned with a new card.
+  if (instance.status === "archived") {
+    throw badRequest("This server has been retired after expiry and cannot be renewed; please open a new server", "INSTANCE_ARCHIVED");
   }
 
   const card = await prisma.redeemCard.findUnique({
@@ -189,7 +261,12 @@ export async function renew(
     try {
       await prisma.provisionedInstance.update({
         where: { instanceUuid: instanceId },
-        data: { status: "active", expireAt: expire ? new Date(expire) : instance.expireAt }
+        data: {
+          status: "active",
+          expireAt: expire ? new Date(expire) : instance.expireAt,
+          // Validity extended: re-arm the 3-day / 1-day expiry reminders.
+          remindFlags: ""
+        }
       });
       await prisma.order.update({ where: { id: order.id }, data: { status: "done" } });
     } catch (persistErr) {
@@ -199,6 +276,7 @@ export async function renew(
       );
     }
     logger.info(`Renewed instance ${instanceId} for ${username} until ${expire} (order ${order.orderNo})`);
+    void notifyRenewed(username, instance, expire).catch(() => undefined);
     return { instanceId, expire };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);

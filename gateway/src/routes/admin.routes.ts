@@ -5,7 +5,9 @@ import * as packageService from "../services/packageService";
 import * as cardService from "../services/cardService";
 import { listNodesOverview } from "../services/nodeService";
 import { getOverview } from "../services/statsService";
+import * as announcementService from "../services/announcementService";
 import { prisma } from "../db/prisma";
+import { Prisma } from "@prisma/client";
 import { panelClient } from "../panel/client";
 import { parse, parseId } from "./validate";
 import { config } from "../config";
@@ -52,6 +54,42 @@ const generateSchema = z.object({
 const cardStatusSchema = z.object({
   status: z.enum(["unused", "disabled"])
 });
+
+const announcementSchema = z.object({
+  title: z.string().max(120).optional().default(""),
+  content: z.string().min(1).max(2000),
+  level: z.enum(["info", "warn", "critical"]).default("info"),
+  active: z.boolean().optional().default(true),
+  // datetime-local strings ("2026-09-10T13:00") or null; empty means no window.
+  startAt: z.string().optional().nullable(),
+  endAt: z.string().optional().nullable()
+});
+const announcementUpdateSchema = announcementSchema.partial();
+
+function toDate(value: string | null | undefined): Date | null | undefined {
+  if (value === undefined) return undefined;
+  if (!value) return null;
+  const d = new Date(value);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
+/** Build a Prisma createdAt range from optional from/to date strings. */
+function dateRange(from?: string, to?: string): { gte?: Date; lte?: Date } | null {
+  const range: { gte?: Date; lte?: Date } = {};
+  if (from) {
+    const d = new Date(from);
+    if (!Number.isNaN(d.getTime())) range.gte = d;
+  }
+  if (to) {
+    const d = new Date(to);
+    if (!Number.isNaN(d.getTime())) {
+      // Treat an end date (yyyy-mm-dd) as inclusive of that whole day.
+      d.setHours(23, 59, 59, 999);
+      range.lte = d;
+    }
+  }
+  return range.gte || range.lte ? range : null;
+}
 
 export async function adminRoutes(app: FastifyInstance): Promise<void> {
   app.addHook("preHandler", async (req) => {
@@ -123,21 +161,101 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
     return { panelUrl: config.mcsmUiOrigin };
   });
 
-  app.get("/admin/orders", async () => {
+  app.get("/admin/orders", async (req) => {
+    const q = req.query as { q?: string; status?: string; from?: string; to?: string };
+    const where: Prisma.OrderWhereInput = {};
+    const keyword = (q.q || "").trim();
+    if (keyword) {
+      where.OR = [
+        { username: { contains: keyword } },
+        { orderNo: { contains: keyword } }
+      ];
+    }
+    if (q.status) where.status = q.status;
+    const range = dateRange(q.from, q.to);
+    if (range) where.createdAt = range;
     const orders = await prisma.order.findMany({
+      where,
       orderBy: { id: "desc" },
-      take: 200,
+      take: 500,
       include: { package: { select: { id: true, name: true } } }
     });
     return { orders };
   });
 
-  app.get("/admin/instances", async () => {
+  app.get("/admin/instances", async (req) => {
+    const q = req.query as { q?: string; status?: string };
+    const where: Prisma.ProvisionedInstanceWhereInput = {};
+    const keyword = (q.q || "").trim();
+    if (keyword) {
+      where.OR = [
+        { username: { contains: keyword } },
+        { instanceUuid: { contains: keyword } },
+        { daemonId: { contains: keyword } }
+      ];
+    }
+    if (q.status) where.status = q.status;
     const instances = await prisma.provisionedInstance.findMany({
+      where,
       orderBy: { id: "desc" },
       take: 500,
       include: { package: { select: { id: true, name: true } } }
     });
     return { instances };
+  });
+
+  app.get("/admin/announcements", async () => {
+    return { announcements: await announcementService.listAll() };
+  });
+
+  app.post("/admin/announcements", async (req) => {
+    const body = parse(announcementSchema, req.body);
+    return {
+      announcement: await announcementService.create({
+        title: body.title,
+        content: body.content,
+        level: body.level,
+        active: body.active,
+        startAt: toDate(body.startAt),
+        endAt: toDate(body.endAt)
+      })
+    };
+  });
+
+  app.put("/admin/announcements/:id", async (req) => {
+    const id = parseId((req.params as { id: string }).id);
+    const body = parse(announcementUpdateSchema, req.body);
+    return {
+      announcement: await announcementService.update(id, {
+        title: body.title,
+        content: body.content,
+        level: body.level,
+        active: body.active,
+        startAt: toDate(body.startAt),
+        endAt: toDate(body.endAt)
+      })
+    };
+  });
+
+  app.delete("/admin/announcements/:id", async (req) => {
+    const id = parseId((req.params as { id: string }).id);
+    await announcementService.remove(id);
+    return { ok: true };
+  });
+
+  app.get("/admin/webhooks", async (req) => {
+    const q = req.query as { provider?: string; sig?: string; processed?: string };
+    const where: Prisma.WebhookEventWhereInput = {};
+    if (q.provider) where.provider = q.provider;
+    if (q.sig === "ok") where.signatureOk = true;
+    else if (q.sig === "bad") where.signatureOk = false;
+    if (q.processed === "yes") where.processed = true;
+    else if (q.processed === "no") where.processed = false;
+    const events = await prisma.webhookEvent.findMany({
+      where,
+      orderBy: { id: "desc" },
+      take: 200
+    });
+    return { events };
   });
 }

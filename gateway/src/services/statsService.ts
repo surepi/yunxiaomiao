@@ -63,7 +63,7 @@ export async function getOverview() {
     if (o.status === "done") { ordersDone++; revenueFen += o.amountFen; }
   }
 
-  let instActive = 0, instExpired = 0, instProvisioning = 0, instFailed = 0, expiringSoon = 0;
+  let instActive = 0, instExpired = 0, instProvisioning = 0, instFailed = 0, instArchived = 0, expiringSoon = 0;
   const now = Date.now();
   const in3days = now + 3 * 24 * 3600 * 1000;
   for (const i of instances) {
@@ -74,6 +74,7 @@ export async function getOverview() {
     } else if (i.status === "expired") instExpired++;
     else if (i.status === "provisioning") instProvisioning++;
     else if (i.status === "failed") instFailed++;
+    else if (i.status === "archived") instArchived++;
   }
 
   const nodesOnline = nodes.filter((n) => n.available && n.ping?.available).length;
@@ -96,7 +97,7 @@ export async function getOverview() {
       cardsUnused, cardsUsed, cardsDisabled,
       ordersTotal: orders.length, ordersToday, ordersDone, ordersFailed,
       revenueFen,
-      instancesTotal: instances.length, instActive, instExpired, instProvisioning, instFailed, expiringSoon,
+      instancesTotal: instances.length, instActive, instExpired, instProvisioning, instFailed, instArchived, expiringSoon,
       nodesTotal: nodes.length, nodesOnline
     },
     stock,

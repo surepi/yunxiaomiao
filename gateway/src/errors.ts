@@ -19,6 +19,8 @@ export const notFound = (message: string, code = "NOT_FOUND") =>
   new AppError(404, code, message);
 export const conflict = (message: string, code = "CONFLICT") =>
   new AppError(409, code, message);
+export const tooManyRequests = (message: string, code = "RATE_LIMITED") =>
+  new AppError(429, code, message);
 export const upstream = (message: string, code = "UPSTREAM_ERROR") =>
   new AppError(502, code, message);
 

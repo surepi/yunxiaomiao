@@ -82,10 +82,14 @@ model ProvisionedInstance {
   package      Package?  @relation(fields: [packageId], references: [id])
   orderId      Int?
   order        Order?    @relation(fields: [orderId], references: [id])
-  status       String    @default("provisioning") // provisioning | active | expired | failed
+  status       String    @default("provisioning") // provisioning | active | expired | archived | failed
   expireAt     DateTime?
   // JSON string: last known instance info (ports, status, players, ...)
   raw          String    @default("{}")
+  // CSV of expiry-reminder thresholds already emailed, e.g. "3,1,grace" (reset on renew)
+  remindFlags  String    @default("")
+  // Set when the instance is archived/deleted after the post-expiry grace period.
+  archivedAt   DateTime?
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 
@@ -109,4 +113,44 @@ model WebhookEvent {
   processed   Boolean  @default(false)
   note        String   @default("")
   createdAt   DateTime @default(now())
+}
+
+// Buyer contact details kept on the gateway side (the panel only stores username/password).
+// Used for provision/renew/expiry notifications and password reset.
+model UserProfile {
+  id        Int      @id @default(autoincrement())
+  username  String   @unique
+  email     String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// Single-use password reset tokens. Only the SHA-256 hash is stored; the raw
+// token is emailed to the buyer and exchanged once within its validity window.
+model PasswordReset {
+  id        Int       @id @default(autoincrement())
+  username  String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([username])
+}
+
+// Portal announcements / maintenance notices, edited from the admin console and
+// shown as a banner to buyers. Only rows that are active and within their
+// optional schedule window are returned to the public portal.
+model Announcement {
+  id        Int       @id @default(autoincrement())
+  title     String    @default("")
+  content   String
+  level     String    @default("info") // info | warn | critical
+  active    Boolean   @default(true)
+  startAt   DateTime?
+  endAt     DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([active])
 }

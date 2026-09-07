@@ -26,7 +26,7 @@ function hostOf(node: PanelNode | undefined): string {
 export async function listForUser(username: string): Promise<MyInstance[]> {
   const [live, records, nodes] = await Promise.all([
     panelClient.queryInstances(username).catch(() => [] as InstanceInfo[]),
-    prisma.provisionedInstance.findMany({ where: { username } }),
+    prisma.provisionedInstance.findMany({ where: { username, status: { not: "archived" } } }),
     panelClient.listNodes().catch(() => [] as PanelNode[])
   ]);
 

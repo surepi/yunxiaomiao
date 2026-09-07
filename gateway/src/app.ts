@@ -9,6 +9,7 @@ import { redeemRoutes } from "./routes/redeem.routes";
 import { instanceRoutes } from "./routes/instance.routes";
 import { adminRoutes } from "./routes/admin.routes";
 import { webhookRoutes } from "./routes/webhook.routes";
+import { announcementRoutes } from "./routes/announcement.routes";
 
 export async function buildApp(): Promise<FastifyInstance> {
   const app = Fastify({ logger: false, bodyLimit: 2 * 1024 * 1024 });
@@ -34,6 +35,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(instanceRoutes);
   await app.register(adminRoutes);
   await app.register(webhookRoutes);
+  await app.register(announcementRoutes);
 
   return app;
 }

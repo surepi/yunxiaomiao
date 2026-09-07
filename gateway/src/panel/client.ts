@@ -260,6 +260,16 @@ class PanelClient {
     await this.call("GET", `/api/protected_instance/${action}?${qs.toString()}`);
   }
 
+  /**
+   * Delete an instance from the panel (and optionally the daemon files). Used by
+   * the reconcile cleanup after the post-expiry grace period. Best-effort: the
+   * caller treats a failure as "try again next run" rather than fatal.
+   */
+  async deleteInstance(instanceUuid: string, daemonId: string, deleteFiles: boolean): Promise<void> {
+    const qs = new URLSearchParams({ uuid: instanceUuid, daemonId });
+    await this.call("DELETE", `/api/instance?${qs.toString()}`, { deleteFile: deleteFiles });
+  }
+
   /** Build a one-click login URL that redirects the buyer into the MCSM UI terminal. */
   buildSsoUrl(params: { username: string; token: string; instanceId: string; daemonId: string }): string {
     const origin = config.mcsmUiOrigin;

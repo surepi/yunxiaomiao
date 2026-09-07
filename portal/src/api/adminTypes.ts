@@ -92,3 +92,26 @@ export interface Overview {
   nodes: AdminNode[];
   alerts: OverviewAlert[];
 }
+
+export interface Announcement {
+  id: number;
+  title: string;
+  content: string;
+  level: "info" | "warn" | "critical";
+  active: boolean;
+  startAt: string | null;
+  endAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface WebhookEventItem {
+  id: number;
+  provider: string;
+  eventId: string;
+  payload: string;
+  signatureOk: boolean;
+  processed: boolean;
+  note: string;
+  createdAt: string;
+}

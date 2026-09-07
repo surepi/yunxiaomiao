@@ -10,17 +10,21 @@ import PackagesTab from "../../components/admin/PackagesTab.vue";
 import CardsTab from "../../components/admin/CardsTab.vue";
 import OrdersTab from "../../components/admin/OrdersTab.vue";
 import InstancesTab from "../../components/admin/InstancesTab.vue";
+import AnnouncementsTab from "../../components/admin/AnnouncementsTab.vue";
+import WebhooksTab from "../../components/admin/WebhooksTab.vue";
 
 const admin = useAdminStore();
 const router = useRouter();
-const tab = ref<"overview" | "nodes" | "packages" | "cards" | "orders" | "instances">("overview");
+const tab = ref<"overview" | "nodes" | "packages" | "cards" | "orders" | "instances" | "announce" | "webhooks">("overview");
 const tabs = [
   { key: "overview", label: t("admin_tab_overview") },
   { key: "nodes", label: t("admin_tab_nodes") },
   { key: "packages", label: t("admin_tab_packages") },
   { key: "cards", label: t("admin_tab_cards") },
   { key: "orders", label: t("admin_tab_orders") },
-  { key: "instances", label: t("admin_tab_instances") }
+  { key: "instances", label: t("admin_tab_instances") },
+  { key: "announce", label: t("admin_tab_announce") },
+  { key: "webhooks", label: t("admin_tab_webhooks") }
 ] as const;
 
 const panelUrl = ref("");
@@ -72,5 +76,7 @@ function logout() {
     <CardsTab v-else-if="tab === 'cards'" />
     <OrdersTab v-else-if="tab === 'orders'" />
     <InstancesTab v-else-if="tab === 'instances'" />
+    <AnnouncementsTab v-else-if="tab === 'announce'" />
+    <WebhooksTab v-else-if="tab === 'webhooks'" />
   </div>
 </template>

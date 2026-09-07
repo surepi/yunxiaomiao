@@ -11,6 +11,7 @@ const route = useRoute();
 const mode = ref<"login" | "register">("login");
 const username = ref("");
 const password = ref("");
+const email = ref("");
 const error = ref("");
 const busy = ref(false);
 
@@ -21,7 +22,7 @@ async function submit() {
     if (mode.value === "login") {
       await auth.login(username.value.trim(), password.value);
     } else {
-      await auth.register(username.value.trim(), password.value);
+      await auth.register(username.value.trim(), password.value, email.value.trim());
     }
     const redirect = (route.query.redirect as string) || "/services";
     router.push(redirect);
@@ -46,10 +47,18 @@ async function submit() {
           <label>{{ t("username") }}</label>
           <input v-model="username" autocomplete="username" placeholder="tbplayer01" />
         </div>
+        <div v-if="mode === 'register'" class="field">
+          <label>{{ t("email") }}</label>
+          <input v-model="email" type="email" autocomplete="email" placeholder="you@example.com" />
+          <div class="hint">{{ t("email_hint") }}</div>
+        </div>
         <div class="field">
           <label>{{ t("password") }}</label>
-          <input v-model="password" type="password" autocomplete="current-password" />
+          <input v-model="password" type="password" :autocomplete="mode === 'login' ? 'current-password' : 'new-password'" />
           <div class="hint">{{ t("password_hint") }}</div>
+        </div>
+        <div v-if="mode === 'login'" class="field" style="text-align: right">
+          <router-link to="/reset" class="link">{{ t("login_forgot") }}</router-link>
         </div>
         <div v-if="error" class="alert err">{{ error }}</div>
         <button class="btn" style="width: 100%" :disabled="busy">

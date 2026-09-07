@@ -25,9 +25,15 @@ export const useAuthStore = defineStore("auth", {
       setToken(res.token);
       localStorage.setItem("gw_username", res.username);
     },
-    async register(username: string, password: string) {
-      await apiPost<{ username: string }>("/auth/register", { username, password });
+    async register(username: string, password: string, email: string) {
+      await apiPost<{ username: string }>("/auth/register", { username, password, email });
       await this.login(username, password);
+    },
+    async forgotPassword(account: string) {
+      await apiPost<{ ok: true }>("/auth/forgot", { account });
+    },
+    async resetPassword(token: string, newPassword: string) {
+      await apiPost<{ ok: true }>("/auth/reset", { token, newPassword });
     },
     logout() {
       this.token = "";
